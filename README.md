@@ -4,15 +4,57 @@
   <meta charset="UTF-8">
   <title>Encrypted Chat</title>
   <style>
-    body { font-family: Arial, sans-serif; background-color: #000; color: white; margin: 0; padding: 0; }
-    #loginPage, #chatPage { display: none; padding: 10px; }
-    #chat { height: 80vh; overflow-y: auto; background-size: cover; padding: 10px; }
-    .message { padding: 8px 12px; margin: 5px; border-radius: 10px; max-width: 60%; }
-    .sent { background: #4CAF50; color: white; margin-left: auto; cursor: pointer; }
-    .received { background: #555; color: white; margin-right: auto; }
-    #message { width: 70%; padding: 8px; }
-    button { padding: 8px 12px; margin-left: 5px; }
-    .chat-media { max-width: 200px; max-height: 200px; display: block; margin-top: 5px; }
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #000;
+      color: white;
+      margin: 0;
+      padding: 0;
+    }
+    #loginPage, #chatPage {
+      display: none;
+      padding: 10px;
+    }
+    #chat {
+      height: 80vh;
+      overflow-y: auto;
+      background-size: cover;
+      padding: 10px;
+    }
+    .message {
+      padding: 8px 12px;
+      margin: 5px;
+      border-radius: 10px;
+      max-width: 60%;
+      word-wrap: break-word;
+    }
+    .sent {
+      background: #4CAF50;
+      color: white;
+      margin-left: auto;
+      cursor: pointer;
+    }
+    .received {
+      background: #555;
+      color: white;
+      margin-right: auto;
+    }
+    #message {
+      width: 70%;
+      padding: 8px;
+    }
+    button {
+      padding: 8px 12px;
+      margin-left: 5px;
+      cursor: pointer;
+    }
+    .chat-media {
+      max-width: 200px;
+      max-height: 200px;
+      display: block;
+      margin-top: 5px;
+      border-radius: 10px;
+    }
   </style>
 </head>
 <body>
@@ -47,11 +89,11 @@
     };
     firebase.initializeApp(firebaseConfig);
 
-    let db = firebase.database();
-    let storage = firebase.storage();
+    const db = firebase.database();
+    const storage = firebase.storage();
     let roomName = "";
     let secretKey = "";
-    let myId = localStorage.getItem("myId") || Date.now().toString();
+    const myId = localStorage.getItem("myId") || Date.now().toString();
     localStorage.setItem("myId", myId);
 
     function encrypt(text, key) {
@@ -81,28 +123,34 @@
       }
       document.getElementById("loginPage").style.display = "none";
       document.getElementById("chatPage").style.display = "block";
+
       const savedBg = localStorage.getItem("chatBackground");
       if (savedBg) {
         document.getElementById("chat").style.backgroundImage = `url(${savedBg})`;
       }
+
       db.ref(roomName).on("child_added", function(snapshot) {
-        let data = snapshot.val();
-        let decrypted = decrypt(data.text, secretKey);
-        let div = document.createElement("div");
+        const data = snapshot.val();
+        const decrypted = decrypt(data.text, secretKey);
+
+        // Always create a new message bubble
+        const div = document.createElement("div");
         div.setAttribute("data-id", snapshot.key);
+
         if (decrypted.startsWith("file:")) {
-          let fileUrl = decrypted.replace("file:", "");
-          let link = document.createElement("a");
+          const fileUrl = decrypted.replace("file:", "");
+          const link = document.createElement("a");
           link.href = fileUrl;
           link.target = "_blank";
           link.download = fileUrl.split('/').pop();
+
           if (fileUrl.match(/\.(jpeg|jpg|png|gif)$/i)) {
-            let img = document.createElement("img");
+            const img = document.createElement("img");
             img.src = fileUrl;
             img.className = "chat-media";
             link.appendChild(img);
           } else if (fileUrl.match(/\.(mp4|webm|ogg)$/i)) {
-            let video = document.createElement("video");
+            const video = document.createElement("video");
             video.src = fileUrl;
             video.controls = true;
             video.className = "chat-media";
@@ -112,9 +160,10 @@
         } else {
           div.textContent = decrypted;
         }
+
         if (data.sender === myId) {
           div.className = "message sent";
-          div.onclick = function () {
+          div.onclick = function() {
             if (confirm("Delete this message?")) {
               db.ref(roomName).child(snapshot.key).remove();
               div.remove();
@@ -123,16 +172,17 @@
         } else {
           div.className = "message received";
         }
+
         document.getElementById("chat").appendChild(div);
         document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
       });
     }
 
     function sendMessage() {
-      let msgInput = document.getElementById("message");
-      let msg = msgInput.value.trim();
-      if (msg === "") return;
-      let encrypted = encrypt(msg, secretKey);
+      const msgInput = document.getElementById("message");
+      const msg = msgInput.value.trim();
+      if (!msg) return;
+      const encrypted = encrypt(msg, secretKey);
       db.ref(roomName).push({ text: encrypted, sender: myId });
       msgInput.value = "";
       msgInput.focus();
@@ -148,7 +198,7 @@
         const storageRef = storage.ref(`${roomName}/${Date.now()}_${file.name}`);
         storageRef.put(file).then(snapshot => {
           snapshot.ref.getDownloadURL().then(url => {
-            let encryptedUrl = encrypt("file:" + url, secretKey);
+            const encryptedUrl = encrypt("file:" + url, secretKey);
             db.ref(roomName).push({ text: encryptedUrl, sender: myId });
           });
         });
