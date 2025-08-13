@@ -4,30 +4,95 @@
   <meta charset="UTF-8">
   <title>Encrypted Chat</title>
   <style>
-    body { font-family: Arial, sans-serif; background-color: #000; color: white; }
-    #chat { max-width: 600px; margin: auto; padding: 10px; height: 400px; overflow-y: auto; border: 1px solid #333; }
-    .message { padding: 5px; margin: 5px; border-radius: 5px; }
-    .sent { background: #0b93f6; color: white; text-align: right; }
-    .received { background: #262d31; color: white; text-align: left; }
-    input, button { padding: 10px; margin: 5px; }
+    body {
+      font-family: "Segoe UI Emoji", Arial, sans-serif;
+      background-color: #000;
+      color: white;
+      margin: 0;
+      padding: 0;
+    }
+    #loginPage, #chatPage {
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+    }
+    #chat {
+      height: 400px;
+      overflow-y: auto;
+      border: 1px solid #333;
+      padding: 10px;
+      background-color: #111;
+      border-radius: 10px;
+    }
+    .message {
+      padding: 8px 12px;
+      margin: 5px;
+      border-radius: 15px;
+      max-width: 70%;
+      word-wrap: break-word;
+      font-size: 16px;
+    }
+    .sent {
+      background: white;
+      color: black;
+      text-align: right;
+      margin-left: auto;
+    }
+    .received {
+      background: black;
+      color: white;
+      text-align: left;
+      border: 1px solid #444;
+      margin-right: auto;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px 0;
+      border-radius: 5px;
+      border: none;
+      font-size: 16px;
+    }
+    #message {
+      width: 80%;
+    }
+    #sendBtn {
+      width: 18%;
+      background: #0b93f6;
+      color: white;
+    }
+    #loginPage input {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    #joinBtn {
+      background: #0b93f6;
+      color: white;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
-  <h2>Enter Room Name and Secret Key</h2>
-  <input type="text" id="room" placeholder="Room Name"><br>
-  <input type="text" id="key" placeholder="Secret Key"><br>
-  <button onclick="joinRoom()">Join Chat</button>
 
-  <div id="chat" style="display:none;"></div>
-  <input type="text" id="message" placeholder="Type a message" style="display:none;">
-  <button id="sendBtn" onclick="sendMessage()" style="display:none;">Send</button>
+  <!-- Page 1: Login -->
+  <div id="loginPage">
+    <h2>Join Chat Room</h2>
+    <input type="text" id="room" placeholder="Room Name"><br>
+    <input type="text" id="key" placeholder="Secret Key"><br>
+    <button id="joinBtn" onclick="joinRoom()">Join Chat</button>
+  </div>
+
+  <!-- Page 2: Chat -->
+  <div id="chatPage" style="display:none;">
+    <div id="chat"></div>
+    <input type="text" id="message" placeholder="Type a message">
+    <button id="sendBtn" onclick="sendMessage()">Send</button>
+  </div>
 
   <!-- Firebase SDK v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
   <script>
-    // Your Firebase project config
     const firebaseConfig = {
       apiKey: "AIzaSyCyXRwlhZiOK3rVYa6lHGg0rHB5CS6h1W4",
       authDomain: "my-chat-3594d.firebaseapp.com",
@@ -44,7 +109,6 @@
     let roomName = "";
     let secretKey = "";
 
-    // XOR encryption
     function encrypt(text, key) {
       let result = '';
       for (let i = 0; i < text.length; i++) {
@@ -62,7 +126,6 @@
       return result;
     }
 
-    // Join chat room
     function joinRoom() {
       roomName = document.getElementById("room").value.trim();
       secretKey = document.getElementById("key").value.trim();
@@ -72,13 +135,13 @@
         return;
       }
 
-      document.getElementById("chat").style.display = "block";
-      document.getElementById("message").style.display = "inline-block";
-      document.getElementById("sendBtn").style.display = "inline-block";
+      document.getElementById("loginPage").style.display = "none";
+      document.getElementById("chatPage").style.display = "block";
 
       db.ref(roomName).on("child_added", function(snapshot) {
         let data = snapshot.val();
         let decrypted = decrypt(data.text, secretKey);
+
         let div = document.createElement("div");
         div.className = "message received";
         div.innerText = decrypted;
@@ -87,9 +150,9 @@
       });
     }
 
-    // Send encrypted message
     function sendMessage() {
-      let msg = document.getElementById("message").value.trim();
+      let msgInput = document.getElementById("message");
+      let msg = msgInput.value.trim();
       if (msg === "") return;
 
       let encrypted = encrypt(msg, secretKey);
@@ -101,8 +164,10 @@
       document.getElementById("chat").appendChild(div);
       document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
 
-      document.getElementById("message").value = "";
+      msgInput.value = "";
+      msgInput.focus(); // Keep keyboard open on mobile
     }
   </script>
+
 </body>
 </html>
