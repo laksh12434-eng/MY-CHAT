@@ -109,10 +109,12 @@
     let roomName = "";
     let secretKey = "";
 
+    // UTF-8 safe XOR encryption for emoji support
     function encrypt(text, key) {
+      let utf8Text = unescape(encodeURIComponent(text));
       let result = '';
-      for (let i = 0; i < text.length; i++) {
-        result += String.fromCharCode(text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
+      for (let i = 0; i < utf8Text.length; i++) {
+        result += String.fromCharCode(utf8Text.charCodeAt(i) ^ key.charCodeAt(i % key.length));
       }
       return btoa(result);
     }
@@ -123,7 +125,7 @@
       for (let i = 0; i < decoded.length; i++) {
         result += String.fromCharCode(decoded.charCodeAt(i) ^ key.charCodeAt(i % key.length));
       }
-      return result;
+      return decodeURIComponent(escape(result));
     }
 
     function joinRoom() {
@@ -144,7 +146,7 @@
 
         let div = document.createElement("div");
         div.className = "message received";
-        div.innerText = decrypted;
+        div.textContent = decrypted; // textContent supports emojis
         document.getElementById("chat").appendChild(div);
         document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
       });
@@ -160,7 +162,7 @@
 
       let div = document.createElement("div");
       div.className = "message sent";
-      div.innerText = msg;
+      div.textContent = msg; // Keep emoji intact
       document.getElementById("chat").appendChild(div);
       document.getElementById("chat").scrollTop = document.getElementById("chat").scrollHeight;
 
