@@ -27,6 +27,7 @@
       border-radius: 10px;
       max-width: 60%;
       word-wrap: break-word;
+      position: relative;
     }
     .sent {
       background: #4CAF50;
@@ -38,6 +39,7 @@
       background: #555;
       color: white;
       margin-right: auto;
+      cursor: pointer;
     }
     #message {
       width: 70%;
@@ -54,6 +56,18 @@
       display: block;
       margin-top: 5px;
       border-radius: 10px;
+    }
+    .reply-preview {
+      font-size: 12px;
+      opacity: 0.7;
+      border-left: 2px solid #ccc;
+      padding-left: 5px;
+      margin-bottom: 5px;
+    }
+    .status {
+      font-size: 10px;
+      margin-left: 5px;
+      opacity: 0.7;
     }
   </style>
 </head>
@@ -73,10 +87,13 @@
     <button onclick="changeBackground()">🖼️</button>
   </div>
 
+  <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-storage.js"></script>
+  
   <script>
+    // Firebase Config
     const firebaseConfig = {
       apiKey: "...",
       authDomain: "my-chat-3594d.firebaseapp.com",
@@ -96,6 +113,10 @@
     const myId = localStorage.getItem("myId") || Date.now().toString();
     localStorage.setItem("myId", myId);
 
+    let replyToMessageId = null;
+    let replyToMessageText = "";
+
+    // Encryption
     function encrypt(text, key) {
       let utf8Text = unescape(encodeURIComponent(text));
       let result = '';
@@ -104,7 +125,6 @@
       }
       return btoa(result);
     }
-
     function decrypt(text, key) {
       let decoded = atob(text);
       let result = '';
@@ -133,17 +153,24 @@
         const data = snapshot.val();
         const decrypted = decrypt(data.text, secretKey);
 
-        // Always create a new message bubble
         const div = document.createElement("div");
         div.setAttribute("data-id", snapshot.key);
 
+        // Reply preview
+        if (data.replyTo && data.replyText) {
+          const replyPreview = document.createElement("div");
+          replyPreview.className = "reply-preview";
+          replyPreview.textContent = "↪ " + data.replyText;
+          div.appendChild(replyPreview);
+        }
+
+        // File or text
         if (decrypted.startsWith("file:")) {
           const fileUrl = decrypted.replace("file:", "");
           const link = document.createElement("a");
           link.href = fileUrl;
           link.target = "_blank";
           link.download = fileUrl.split('/').pop();
-
           if (fileUrl.match(/\.(jpeg|jpg|png|gif)$/i)) {
             const img = document.createElement("img");
             img.src = fileUrl;
@@ -158,19 +185,33 @@
           }
           div.appendChild(link);
         } else {
-          div.textContent = decrypted;
+          div.appendChild(document.createTextNode(decrypted));
         }
+
+        // Seen status
+        const statusSpan = document.createElement("span");
+        statusSpan.className = "status";
 
         if (data.sender === myId) {
           div.className = "message sent";
           div.onclick = function() {
-            if (confirm("Delete this message?")) {
-              db.ref(roomName).child(snapshot.key).remove();
-              div.remove();
+            if (confirm("Reply to or delete this message?")) {
+              replyToMessageId = snapshot.key;
+              replyToMessageText = decrypted;
+              document.getElementById("message").placeholder = "Replying to: " + decrypted.slice(0, 30);
             }
           };
+          statusSpan.textContent = data.seen ? "👁️" : "✅";
+          div.appendChild(statusSpan);
         } else {
           div.className = "message received";
+          div.onclick = function() {
+            replyToMessageId = snapshot.key;
+            replyToMessageText = decrypted;
+            document.getElementById("message").placeholder = "Replying to: " + decrypted.slice(0, 30);
+          };
+          // Mark seen
+          db.ref(roomName).child(snapshot.key).update({ seen: true });
         }
 
         document.getElementById("chat").appendChild(div);
@@ -183,7 +224,17 @@
       const msg = msgInput.value.trim();
       if (!msg) return;
       const encrypted = encrypt(msg, secretKey);
-      db.ref(roomName).push({ text: encrypted, sender: myId });
+
+      const dataToSend = { text: encrypted, sender: myId, seen: false };
+      if (replyToMessageId) {
+        dataToSend.replyTo = replyToMessageId;
+        dataToSend.replyText = replyToMessageText;
+        replyToMessageId = null;
+        replyToMessageText = "";
+        msgInput.placeholder = "Type your message";
+      }
+
+      db.ref(roomName).push(dataToSend);
       msgInput.value = "";
       msgInput.focus();
     }
@@ -199,7 +250,7 @@
         storageRef.put(file).then(snapshot => {
           snapshot.ref.getDownloadURL().then(url => {
             const encryptedUrl = encrypt("file:" + url, secretKey);
-            db.ref(roomName).push({ text: encryptedUrl, sender: myId });
+            db.ref(roomName).push({ text: encryptedUrl, sender: myId, seen: false });
           });
         });
       };
