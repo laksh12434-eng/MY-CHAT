@@ -22,28 +22,25 @@
   <input type="text" id="message" placeholder="Type a message" style="display:none;">
   <button id="sendBtn" onclick="sendMessage()" style="display:none;">Send</button>
 
-  <!-- Firebase v12 SDK -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-analytics.js";
-    import { getDatabase, ref, push, onChildAdded } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-database.js";
+  <!-- Firebase SDK v8 -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-    // Firebase config from your second code
+  <script>
+    // Your Firebase project config
     const firebaseConfig = {
       apiKey: "AIzaSyCyXRwlhZiOK3rVYa6lHGg0rHB5CS6h1W4",
       authDomain: "my-chat-3594d.firebaseapp.com",
+      databaseURL: "https://my-chat-3594d-default-rtdb.firebaseio.com",
       projectId: "my-chat-3594d",
       storageBucket: "my-chat-3594d.firebasestorage.app",
       messagingSenderId: "208703073410",
       appId: "1:208703073410:web:4ed522eb2cc522c00cd89b",
-      measurementId: "G-CVC6XSQ5JW",
-      databaseURL: "https://my-chat-3594d-default-rtdb.firebaseio.com" // Added for Realtime DB
+      measurementId: "G-CVC6XSQ5JW"
     };
+    firebase.initializeApp(firebaseConfig);
 
-    const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
-    const db = getDatabase(app);
-
+    let db = firebase.database();
     let roomName = "";
     let secretKey = "";
 
@@ -66,7 +63,7 @@
     }
 
     // Join chat room
-    window.joinRoom = function() {
+    function joinRoom() {
       roomName = document.getElementById("room").value.trim();
       secretKey = document.getElementById("key").value.trim();
 
@@ -79,9 +76,7 @@
       document.getElementById("message").style.display = "inline-block";
       document.getElementById("sendBtn").style.display = "inline-block";
 
-      const roomRef = ref(db, roomName);
-
-      onChildAdded(roomRef, (snapshot) => {
+      db.ref(roomName).on("child_added", function(snapshot) {
         let data = snapshot.val();
         let decrypted = decrypt(data.text, secretKey);
         let div = document.createElement("div");
@@ -93,12 +88,12 @@
     }
 
     // Send encrypted message
-    window.sendMessage = function() {
+    function sendMessage() {
       let msg = document.getElementById("message").value.trim();
       if (msg === "") return;
 
       let encrypted = encrypt(msg, secretKey);
-      push(ref(db, roomName), { text: encrypted });
+      db.ref(roomName).push({ text: encrypted });
 
       let div = document.createElement("div");
       div.className = "message sent";
